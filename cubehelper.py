@@ -1,5 +1,4 @@
 import random
-import numbers
 import math
 
 def line(p0, p1):
@@ -38,18 +37,9 @@ def line(p0, p1):
 def random_color(other_color=(-1, -1, -1)):
     """Return a random color as a float tuple, optionally ensuring that it is different to the other_color parameter."""
 
-    r = 0
-    g = 0
-    b = 0
-
-    (other_r, other_g, other_b) = [int(x + 0.5) for x in color_to_float(other_color)]
-
-    while (r == 0 and g == 0 and b == 0) or (r == other_r and g == other_g and b == other_b):
-        r = random.randrange(2)
-        g = random.randrange(2)
-        b = random.randrange(2)
-    return (float(r), float(g), float(b))
-
+    return [           0x0000ff, 0x00ff00, 0x00ffff,
+             0xff0000, 0xff00ff, 0xffff00, 0xffffff ][random.randint(0,6)]
+    
 def pos_modf(val):
     val = math.modf(val)[0]
     if val < 0:
@@ -57,20 +47,20 @@ def pos_modf(val):
     return val
 
 def color_plasma(val):
-    val = pos_modf(val) * 3.0
-    if val < 1.0:
-        r = val
-        g = 1.0 - r
-        b = 0.0
-    elif val < 2.0:
-        b = val - 1.0
-        r = 1.0 - b
-        g = 0.0
+    val = int(val*256)&255
+    if val < 85:
+        r = val * 3;
+        g = 255 - r;
+        b = 0;
+    elif val < 170:
+        b = (val - 85) * 3;
+        r = 255 - b;
+        g = 0;
     else:
-        g = val - 2.0
-        b = 1.0 - g
-        r = 0.0
-    return (r, g, b)
+        g = (val - 170) * 3;
+        b = 255 - g;
+        r = 0;
+    return (r<<16) | (g<<8) | b
 
 def mono_plasma(val):
     val = pos_modf(val) * 2.0
@@ -79,35 +69,30 @@ def mono_plasma(val):
     return (val, val, val)
 
 def mix_color(color0, color1, level):
-    f0 = color_to_float(color0)
-    f1 = color_to_float(color1)
-    return tuple([f1[n] * level + f0[n] * (1.0 - level) for n in range(0, 3)])
+    f0 = color_to_int(color0)
+    f1 = color_to_int(color1)
+    return tuple([int(f1[n] * level + f0[n] * (1.0 - level)) for n in range(0, 3)])
 
 def color_to_hex(color):
-    if isinstance(color, numbers.Integral):
+    if isinstance(color, int):
         return color
     (r, g, b) = color_to_int(color)
     return (r << 16) | (g << 8) | b
 
 def color_to_int(color):
-    if isinstance(color, numbers.Integral):
+    if isinstance(color, int):
         return (color >> 16, (color >> 8) & 0xff, color & 0xff)
-    (r, g, b) = color
-    if not isinstance(r, numbers.Integral):
-        r = int(r * 256.0 - 0.5)
-        g = int(g * 256.0 - 0.5)
-        b = int(b * 256.0 - 0.5)
-    return (r, g, b)
+    return color
 
-def color_to_float(color):
-    if isinstance(color, numbers.Integral):
-        r = color >> 16
-        g = (color >> 8) & 0xff
-        b = color & 0xff
-    else:
-        (r, g, b) = color
-    if isinstance(r, numbers.Integral):
-        r = (r + 0.5) / 256.0
-        g = (g + 0.5) / 256.0
-        b = (b + 0.5) / 256.0
-    return (r, g, b)
+# def color_to_float(color):
+#     if isinstance(color, int):
+#         r = color >> 16
+#         g = (color >> 8) & 0xff
+#         b = color & 0xff
+#     else:
+#         (r, g, b) = color
+#     if isinstance(r, int):
+#         r = (r + 0.5) / 256.0
+#         g = (g + 0.5) / 256.0
+#         b = (b + 0.5) / 256.0
+#     return (r, g, b)

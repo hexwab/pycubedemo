@@ -4,15 +4,14 @@
 
 import cubehelper
 import random
-import numpy
 
 class Pattern(object):
     def init(self):
-        self.position = numpy.array([random.randint(1,self.cube.size)-1, random.randint(1,self.cube.size)-1, random.randint(1,self.cube.size)-1])
+        self.position = [random.randint(1,self.cube.size)-1, random.randint(1,self.cube.size)-1, random.randint(1,self.cube.size)-1]
         self.randomise_direction()
         return 1.0 / self.cube.size
     def randomise_direction(self):
-        self.direction = numpy.array([random.randint(0,1),random.randint(0,1),random.randint(0,1)])
+        self.direction = [random.randint(0,1),random.randint(0,1),random.randint(0,1)]
         for axis in range(0,3):
             if (self.position[axis] == self.cube.size-1):
                 self.direction[axis] = 0

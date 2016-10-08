@@ -9,7 +9,7 @@ class Pattern(object):
     def init(self):
         self.direction = 1 # 1=shrink, -1=expand
         self.current_size = 0 # size is distance from edge of cube, not distance from centre
-        self.max_size = (self.cube.size - 1) / 2
+        self.max_size = (self.cube.size - 1) // 2
         self.color = cubehelper.random_color()
         self.double_buffer = True
         return 1.0 / self.cube.size
@@ -30,7 +30,6 @@ class Pattern(object):
     def draw_cube(self, edge_offset, color):
         left = edge_offset
         right = (self.cube.size - 1) - left
-
         # Vertices:
         # bottom layer
         # 2--6

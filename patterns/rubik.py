@@ -1,7 +1,6 @@
 import random
 import cubehelper
 import math
-import numpy
 
 # sup dawg. I heard you like cubes...
 
@@ -65,7 +64,7 @@ class Pattern(object):
     def init(self):
         self.double_buffer = True
         assert(self.cube.size==8)
-        self.grid = numpy.zeros([8, 8, 8], 'int')
+        self.grid = [0] * 512
         self.pos = start
         self.rot = 0
         self.frame = 0
@@ -74,9 +73,9 @@ class Pattern(object):
         return 1/30.
 
     def draw(self, i, j, face, col):
-        s=7
-        for x in range(i*2+1,i*2+3):
-            for y in range(j*2+1,j*2+3):
+        s = 7
+        for x in range(i*2+1, i*2+3):
+            for y in range(j*2+1, j*2+3):
                 pos = [(x,  y,  0),
                        (x,  y,  s),
                        (x,  0,  y),
@@ -84,7 +83,7 @@ class Pattern(object):
                        (0,  x,  y),
                        (s,  x,  y)][face]
                 corner = rounded and (x==1 or x==6) and (y==1 or y==6)
-                self.grid[pos[0],pos[1],pos[2]] = 0 if corner else col
+                self.grid[(pos[0]<<6)|(pos[1]<<3)|pos[2]] = 0 if corner else col
 
     def render(self):
         self.cube.clear()
@@ -93,32 +92,23 @@ class Pattern(object):
             for j in range(0,8):
                 for k in range(0,8):
                     o = 3.5
-                    x = i-o
-                    y = j-o
-                    z = k-o
-                    cr = math.cos(step * self.rot)
-                    sr = math.sin(step * self.rot)
-                    if f & 1:
-                        sr = -sr
-                        
+                    (x,y,z) = (i-o, j-o, k-o)
                     m = [x,y,z]
                     n = [0,0,0]
                     ind = [[0,1,2],[0,2,1],[1,2,0]][f>>1]
-                    x = ind[0]
-                    y = ind[1]
-                    if ([k>4,k<3,j>4,j<3,i>4,i<3][f]):
-                        n[ind[0]] = round(m[ind[0]] * cr - m[ind[1]] * sr + o)
-                        n[ind[1]] = round(m[ind[0]] * sr + m[ind[1]] * cr + o)
-                    else:
-                        n[ind[0]] = round(m[ind[0]] + o)
-                        n[ind[1]] = round(m[ind[1]] + o)
-                    n[ind[2]] = round(m[ind[2]]+o)
+                    (x,y,z) = ind[:]
+                    rot = self.rot if ([k>4,k<3,j>4,j<3,i>4,i<3][f]) else 0
+                    cr = math.cos(step * rot)
+                    sr = math.sin(step * rot)
+                    if f & 1:
+                        sr = -sr
+                    n[x] = round(m[x] * cr - m[y] * sr + o)
+                    n[y] = round(m[x] * sr + m[y] * cr + o)
+                    n[z] = round(m[z] + o)
                     
-                    xx = n[0]
-                    yy = n[1]
-                    zz = n[2]
+                    (xx,yy,zz) = n[:]
                     if xx >= 0 and xx < 8 and yy >= 0 and yy < 8 and zz >= 0 and zz < 8:
-                        col = self.grid[xx,yy,zz]
+                        col = self.grid[(xx<<6)|(yy<<3)|zz]
                         self.cube.set_pixel((i,j,k), cols[col])
 
     def tick(self):
@@ -144,7 +134,8 @@ class Pattern(object):
 
         self.rot += self.dir
 
-        self.grid[0:8,0:8,0:8] = 0
+        for i in range(512):
+            self.grid[i] = 0
         for face in range(0,6):
             for x in range(0,3):
                 for y in range(0,3):

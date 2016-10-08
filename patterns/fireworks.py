@@ -61,7 +61,7 @@ class Pattern(object):
         self.fade = 1.0
         self.rocket = None
     def descend(self):
-        color = cubehelper.mix_color((0.0,0.0,0.0), self.bit_color, self.fade)
+        color = cubehelper.mix_color((0,0,0), self.bit_color, self.fade)
         for bit in self.bits:
             pos = bit.pos
             v = bit.v
@@ -87,7 +87,7 @@ class Pattern(object):
         y = random.uniform(0.25, 0.75)
         self.rocket = Voxel((x, y, 0.0), (0,0,0))
     def climb(self):
-        self.plot(self.rocket, (1.0, 1.0, 1.0))
+        self.plot(self.rocket, 0xffffff)
         z = self.rocket.pos[2]
         z += CLIMB * DT
         if z >= APEX:

@@ -33,7 +33,7 @@ class Pattern(object):
         if self.cube.color:
             color = self.cube.plasma(e * 5.0)
         else:
-            color = (1.0, 1.0, 1.0)
+            color = 0xffffff
         return cubehelper.mix_color(0, color, e)
 
     def is_empty(self, pos):
@@ -59,7 +59,7 @@ class Pattern(object):
             pos = self.body[i]
             self.energy[i] = e
             if i == num - 1:
-                color = (1.0, 1.0, 1.0)
+                color = 0xffffff
             elif e > 0:
                 color = self.color_for_energy(e)
             else:
