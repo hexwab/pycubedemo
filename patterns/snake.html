@@ -1,52 +1,23 @@
-
 <html>
+  <head>
+    <meta name="viewport" content="width=100, initial-scale=1">
+  </head>
   <body>
+    <div>
+      <button id=0>Left</button>
+      <button id=1>Right</button>
+    </div>
+    <div>
+      <button id=4>Up</button>
+      <button id=5>Down</button>
+    </div>
+    <div>
+      <button id=3>In</button>
+      <button id=2>Out</button>
+    </div>
     <pre id=log>
     </pre>
-    <script>
-      var player = prompt("player? (0-3)");
-      var ws;
-      var el = document.getElementById("log");
-      function log(l) {
-      el.innerHTML+="<br>"+l;
-	window.scrollTo(0,document.body.scrollHeight);
-      }
-      function send(o) {
-      ws.send(JSON.stringify(o));
-      }
-      function connected() {
-        send({player:player});
-        log("connected as player "+player);
-      }
-      function reconnect() {
-        log("reconnecting");
-        window.setTimeout(wsstart,300);
-      }
-      function onmsg(e) {
-	m=JSON.parse(e.data);
-	console.log(m);
-	if (m.colname) {
-	  log("you are "+"<span style='color:"+m.col+"'>"+m.colname+"</sp"+"an>");
-        } else if (m.gameover!==undefined) {
-	  log("you scored "+m.gameover);
-        }
-      }
-      function wsstart() {
-        ws = new WebSocket("ws://localhost:27681/");
-        ws.onopen = connected;
-        ws.onclose = reconnect;
-        ws.onmessage = onmsg;
-      }
-      wsstart();
-      keys = { a:0, d:1, w:2, s:3, q:4, e:5 };
-      function sendkey(k) {
-        send({key:k});
-      }
-      window.onkeydown = function(e) {
-        var k=keys[e.key];
-        if (k!==undefined)
-          sendkey(k);
-      }
+    <script src="snake.js">
     </script>
   </body>
 </html>

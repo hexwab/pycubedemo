@@ -5,7 +5,7 @@ import sys
 import traceback
 
 from SimpleWebSocketServer import SimpleWebSocketServer, WebSocket
-FPS = 40
+FPS = 30
 SZ = 8
 
 dirs = [
@@ -103,17 +103,43 @@ def get(pos):
 def set(pos,obj):
     grid[pos[0]+SZ*(pos[1]+SZ*pos[2])] = obj
     
+def spawn():
+    while True:
+            pos0 = random.randrange(0,8)
+            pos1 = random.randrange(0,8)
+            pos2 = random.randrange(0,8)
+            if get((pos0,pos1,pos2)):
+                continue
+            if not wrap:
+                # bias spawning towards the centre
+                sz2 = (SZ/2)-0.5
+                sz22 = (SZ/2)+0.5
+                c0 = pos0-sz2
+                c1 = pos1-sz2
+                c2 = pos2-sz2
+                dist = (c0*c0+c1*c1+c2*c2)/sz22/sz22
+                if dist>1 and random.random()*dist>1: # CHECKME
+                    print "bad: %d %d %d %f" % (pos0,pos1,pos2,dist)
+                    continue
+            return (pos0,pos1,pos2)
+                
 class Player():
     speed = 12 # ticks per move
-    cells = [(3,3,3)]
+    cells = []
     col = None
     score = 0
     maxlen = 3 # max initial length
     dir = 1 # index into dirs array
-    alive = True
-    respawn_timer = 0
     respawn_delay = 5 * FPS
-    ready_delay = 2 * FPS
+    flashtime = 0.1*FPS
+    dyingtime = 1.0*FPS
+    ready_delay = 2.0 * FPS
+    READY = 0
+    ALIVE = 1
+    DYING = 2
+    DEAD  = 3
+    state = None
+    
     ws = None # socket connection
     index = 0
     def __init__(self,i):
@@ -131,8 +157,8 @@ class Player():
                     if get((x,y,z))==self:
                         print "%d %d %d" % (x,y,z)
                         assert(False)
-        self.alive = True
-        self.cells = [(3,3,3)]
+        self.state = self.READY
+        self.cells = [spawn()]
         self.dir = 1
         self.speed = 15
         self.ticksleft = self.ready_delay
@@ -140,47 +166,63 @@ class Player():
             set(c,self)
         
     def tick(self):
-        if not self.alive:
-            self.respawn_timer -= 1
-            if self.respawn_timer < 0:
-                if self.ws:
-                    self.spawn()
-                else:
-                    players[self.index] = None # ?
-            else:
+        if self.state != self.ALIVE:
+            if self.state == self.DYING:
+                self.ticksleft -= 1
+                if self.ticksleft<0:
+                    self.state = self.DEAD
+                    self.ticksleft = self.respawn_delay
+                    for c in self.cells:
+                        set(c,None)
                 return
-        
+            if self.state == self.READY:
+                self.ticksleft -= 1
+                if self.ticksleft<0:
+                    self.state = self.ALIVE
+                    self.ticksleft = 0
+                return
+            if self.state == self.DEAD:
+                if self.ws:
+                    self.ticksleft -= 1
+                    if self.ticksleft<0:
+                        self.spawn()
+                else:
+                    print "no socket"    
+                return
+                
         
         self.ticksleft -= 1
         #print "ticksleft %d" % self.ticksleft
         if self.ticksleft>0:
             return
-        self.ticksleft = self.speed
+        self.ticksleft += self.speed
         head = self.cells[0]
         newhead = move(head,self.dir)
         #print "newhead",newhead
         #print "len",len(self.cells)
         eaten = False
-
+        dead = False
+        
         if not newhead:
             print "hit edge"
-            self.alive = False
+            dead = True
         else:
             obj = get(newhead)
             typ = type(obj)
             #print obj, typ
             if isinstance(obj, Player):
                 print "hit player"
-                self.alive = False
+                dead = True
             elif isinstance(obj,Target):
                 print "yum"
                 eaten = True
                 self.score += 1
                 self.speed -= 1 # FIXME
             
-        if not self.alive:
+        if dead:
             # insert death sfx here
-            self.respawn_timer = self.respawn_delay
+            self.state = self.DYING
+            self.ticksleft = self.dyingtime
             #if self.ws:
             self.ws.send({'gameover':self.score})
             return
@@ -198,19 +240,23 @@ class Player():
             self.cells = [newhead] + self.cells[:-1]
 
     def color(self,x,y,z):
-        if self.alive:
+        if self.state==self.ALIVE or self.state==self.READY:
             # head should be brighter
             if self.cells[0] == (x,y,z):
                 return cubehelper.mix_color(self.col,WHITE,0.5)
             else:
                 return self.col
-        else:
-            if self.respawn_timer == self.respawn_delay:
+        elif self.state == self.DYING:
+            if self.respawn_delay-self.ticksleft<self.flashtime:
                 return WHITE # flash at moment of impact
             # fade for 1 sec
-            #mix = (self.respawn_delay-self.respawn_timer) / (1.0*FPS)
-            #if mix < 0 
-            return cubehelper.mix_color(self.col,BLACK,0.5) # FIXME
+            mix = self.ticksleft / self.dyingtime
+            #print "mix=%f" % mix
+            #if mix > 1: mix = 1
+            return cubehelper.mix_color(BLACK,self.col,mix)
+        else: # dead
+            assert(self.state == self.DEAD)
+            return BLACK
 
 class Target():
     color1 = (255,128,0)
@@ -222,26 +268,9 @@ class Target():
     def __init__(self):
         self.spawn()
     def spawn(self):
-        # bias spawning towards the centre
-        while True:
-            pos0 = random.randrange(0,8)
-            pos1 = random.randrange(0,8)
-            pos2 = random.randrange(0,8)
-            if get((pos0,pos1,pos2)):
-                continue
-            sz2 = (SZ/2)-0.5
-            sz22 = (SZ/2)+0.5
-            c0 = pos0-sz2
-            c1 = pos1-sz2
-            c2 = pos2-sz2
-            dist = (c0*c0+c1*c1+c2*c2)/sz22/sz22
-            if dist>1 and random.random()*dist>1: # CHECKME
-                print "bad: %d %d %d %f" % (pos0,pos1,pos2,dist)
-                continue
-            self.pos = (pos0,pos1,pos2)
+            self.pos = spawn()
             set(self.pos,self)
             self.ticks = 0
-            break
         
     def tick(self):
         #print "target tick"
@@ -266,7 +295,7 @@ class Target():
 class Pattern(object):
     def init(self):
         assert (SZ == self.cube.size)
-        
+        self.double_buffer = True
         #p = Player()
         #players.append(p)
         t = Target()
